@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: model-training
+  name: predictivemoneymanagement-training
+spec:
+  containers:  
+  - image: localhost:32000/training
+    imagePullPolicy: IfNotPresent
+    name: predictivemoneymanagement-training
+    resources:       
+       # Maximum amount pod can grow upto
+      limits:
+        memory: "500Mi" # Incomppressable / can-not be throttled
+        cpu: "200m" # Compressable resource
+      # Minimum amount of resources required
+      requests: 
+        cpu: "100m"
+        memory: "100Mi"    
+    envFrom:
+    - configMapRef:
+        name: accounttrans.config
+    # NOTE!: Host path should be chagned to nfs volumes in cluster mode
+    volumeMounts:
+    - mountPath: /volume/files/
+      name: proc-files-path
+  volumes:
+  - name: proc-files-path
+    hostPath:
+      # directory location on host
+      path: /home/spiretech/data/ingage/accounts_transactions
+      # this field is optional
+      type: Directory
+  imagePullSecrets:
+  - name: spiretech.gitlab.reg.token.1         
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never
+status: {}
+---  
+# Source: Ingage/templates/account.sca/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: accounttrans.config
+  labels:
+    spiretech.co/name: accountsca
+    spiretech.co/id: ac.sca.001
+    spiretech.co/app: ingage
+    spiretech.co/version: 0.1.0
+    app.kubernetes.io/name: ingage
+    helm.sh/chart: ingage-0.1.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: release-name
+
+data:
+
+    PINO_ACCADAP_DB_SERVER           : 'sql2.spiretech.dev' 
+    PINO_ACCADAP_DB_PORT             : '1433'
+    PINO_ACCADAP_DB_NAME             : 'INGAGECORE' 
+    PINO_ACCADAP_DB_USERNAME         : 'sa' 
+    PINO_ACCADAP_DB_PASSWORD         : '5Qqf=bJ7HgScQBUzE6J4KXtYAzjTB'
+
+    PINO_ACCADAP_AI_DB_NAME          : 'INGAGEAI'
+    PINO_ACCADAP_QUERY_BUDGETWEEKLY  : 'SELECT CustomerID, Week, AllocatedAmount, CategoryTypeCode, Spending FROM [INGAGEAI].[dbo].[AI_BudgetWeekly]'
+    PINO_ACCADAP_TABLE_NAME          : '[INGAGEAI].[dbo].[AI_BudgetWeekly]'
+    PINO_ACCADAP_TRUNC_TABLE_QUERY   : 'DELETE FROM [INGAGEAI].[dbo].[AI_BudgetWeekly]'
+    PINO_ACCADAP_TRAIN_LOG_TABLE_NAME:  '[INGAGEAI].[dbo].[AI_TrainingLog]'
+
+    PINO_ACCADAP_DB_STMT_TIMEOUT     : 60
+    PINO_ACCADAP_DB_CONN_TIMEOUT     : 45
+
+    PINO_ACCADAP_DATA_PATH           : 'projects/usecase#1/hikmah-model-training-processor/data'
+
+    PINO_ACCADAP_MODEL_NAME          : 'LSTM'
+
+
+    PINO_ACCADAP_DATE_COLUMN         : 'Week'
+    PINO_ACCADAP_ITEM_COLUMN         : 'CustomerSeries'
+    PINO_ACCADAP_TARGET_COLUMN       : 'Spending'
+    PINO_ACCADAP_FREQUENCY           : 'W'
+    PINO_ACCADAP_FEATURES            : ['AllocatedAmount']
+    PINO_ACCADAP_FORECAT_HORIZAN     : 1
+    PINO_ACCADAP_LOOK_BACK           : 3
+    PINO_ACCADAP_SPLIT_TYPE          : 'last'
+    PINO_ACCADAP_USE_VALIDATION      : False
+    PINO_ACCADAP_MODEL_TYPE          : 'single'
+    PINO_ACCADAP_DIMENSIONS          : ['CustomerSeries']
+    PINO_ACCADAP_DIMENSION_COLS      : ['CustomerSeries']
+    PINO_ACCADAP_DATATYPES           : {'Week': 'timestamp', 'CustomerSeries': 'numeric', 'AllocatedAmount': 'numeric', 'Spending': 'numeric'}
+
+    PINO_ACCADAP_MONTHS_BACK         : 3
+    PINO_ACCADAP_LEAST_MONTHS        : 1           
+    PINO_ACCADAP_TOTAL_MONTHS        : 3
+
+
+    PINO_ACCADAP_QUERY_BUDGETTRANS   : "SELECT BudgetID, TransAmount, TransDate, CalendarYearMonth, AllocatedAmount FROM [INGAGECORE].[dbo].[ING_BudgetTransactions] WHERE TransDate BETWEEN (DATEADD(M, -3, (SELECT MAX(TransDate) FROM [INGAGE].[dbo].[ING_BudgetTransactions]))) AND (SELECT MAX(TransDate) FROM [INGAGE].[dbo].[ING_BudgetTransactions])"
+    PINO_ACCADAP_QUERY_BUDGET        : "SELECT BudgetID, CustomerID, CategoryTypeCode, AllocatedAmount FROM [INGAGECORE].[dbo].[ING_Budget] WHERE  BudgetID IN (SELECT BudgetID  FROM [INGAGECORE].[dbo].[ING_BudgetTransactions] WHERE TransDate BETWEEN (DATEADD(M, -3, (SELECT MAX(TransDate) FROM [INGAGE].[dbo].[ING_BudgetTransactions]))) AND (SELECT MAX(TransDate) FROM [INGAGE].[dbo].[ING_BudgetTransactions]))"
+    PINO_ACCADAP_QUERY_CATTYPES      : "SELECT CategoryTypeCode,CategoryTypeName FROM [INGAGECORE].[dbo].[ING_Trans_CategoryType]"
+
+    #Set Train Test and Generate Weekly Data Days
+    PINO_ACCADAP_TRAIN_DAY           : 21
+    PINO_ACCADAP_TRAIN_TIME          : "01:00"
+    PINO_ACCADAP_GENERATE_DATA_DAY   : 01
+
+    PINO_LOG_FORMAT                  : "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
+    # Log Level INFO | WARNING | DEBUG | CRITICAL | ERROR
+    PINO_LOG_LEVEL                   : "INFO"
+   
+    
+    
+    

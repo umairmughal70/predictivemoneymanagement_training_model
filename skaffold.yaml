@@ -1,0 +1,21 @@
+apiVersion: skaffold/v2beta16
+kind: Config
+metadata:
+  name: accounttransloader.mssg
+build:
+  tagPolicy:
+    sha256: {} 
+  artifacts:
+  - image: localhost:32000/accounttransloader.mssg
+deploy:
+  kubectl:
+    manifests:
+    - k8s-pod-dev.yaml
+      #- k8s-pod.yaml
+profiles:
+- name: local-dev
+  build:
+    artifacts:
+      - image: localhost:32000/accounttransloader.mssg
+        docker:
+          dockerfile: DockerfileDev
